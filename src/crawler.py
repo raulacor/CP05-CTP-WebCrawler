@@ -1,15 +1,21 @@
 import requests
+
+from datetime import date
 from bs4 import BeautifulSoup
+from auxiliary import clean_price, clean_pct
 
 
 def parse_row(row):
+    #print(row.name, row.attrs.keys())
     return {
+        "appid": row["data-ds-appid"],
         "title": row.select_one("span.title").text,
         "release_date": row.select_one("div.search_released").text,
-        "discount_pct": row.select_one("div.discount_pct").text,
-        "discounted_price": row.select_one("div.discount_final_price").text,
-        "original_price": row.select_one("div.discount_original_price").text,
-        "image": row.select_one("div.search_capsule > img")["src"]
+        "discount_pct": clean_pct(row.select_one("div.discount_pct").text),
+        "discounted_price": clean_price(row.select_one("div.discount_final_price").text),
+        "original_price": clean_price(row.select_one("div.discount_original_price").text),
+        "image": row.select_one("div.search_capsule > img")["src"],
+        "collected_date": date.today().isoformat(),
         }
 
 def gather_games():
@@ -28,6 +34,9 @@ def gather_games():
 
         start += 50
     return games
+
+
+
 
 def main():
     games = gather_games()
