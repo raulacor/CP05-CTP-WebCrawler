@@ -1,0 +1,172 @@
+/* ==========================================================================
+   Steam Sales Radar - styles
+   Colors are defined ONCE as variables (tokens) below, then used everywhere.
+   Light mode is the default; dark mode swaps the same tokens.
+   ========================================================================== */
+
+/* ---------- Color tokens: light mode ---------- */
+:root {
+  color-scheme: light;
+  --bg:            #f4f3ef;  /* page background */
+  --surface:       #fcfcfb;  /* cards */
+  --border:        #e4e2db;  /* card borders, table lines */
+  --text-primary:  #0b0b0b;  /* main text */
+  --text-secondary:#52514e;  /* labels, captions */
+  --text-muted:    #8a8880;  /* hints */
+  --series:        #2a78d6;  /* accent color (focus outlines) */
+  /* Pie slices: one blue, light -> dark, because the ranges are ORDERED
+     (0-25% ... 75-100%, cheap ... expensive). Validated for colorblind/contrast. */
+  --step-1:        #86b6ef;
+  --step-2:        #3987e5;
+  --step-3:        #1c5cab;
+  --step-4:        #0d366b;
+  --grid:          #ebe9e2;  /* chart gridlines (kept faint on purpose) */
+  --deal-bg:       #e3f1c9;  /* discount badge background */
+  --deal-fg:       #3d5a10;  /* discount badge text */
+  --ok:            #1e7a3a;  /* "API online" pill */
+  --bad:           #b42318;  /* "API offline" pill + error box */
+  --radius: 14px;
+}
+
+/* ---------- Color tokens: dark mode (follows the OS setting) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg:            #111110;
+    --surface:       #1a1a19;
+    --border:        #2c2b29;
+    --text-primary:  #ffffff;
+    --text-secondary:#c3c2b7;
+    --text-muted:    #8d8c84;
+    --series:        #3987e5;
+    --step-1:        #9ec5f4;  /* dark mode: lighter steps stand out on the dark card */
+    --step-2:        #5598e7;
+    --step-3:        #2a78d6;
+    --step-4:        #184f95;
+    --grid:          #262624;
+    --deal-bg:       #2e3d14;
+    --deal-fg:       #c7ec7e;
+    --ok:            #4ccf73;
+    --bad:           #ff7b6e;
+  }
+}
+/* Same dark values if someone forces data-theme="dark" on <html> */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:#111110; --surface:#1a1a19; --border:#2c2b29;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8d8c84;
+  --series:#3987e5; --step-1:#9ec5f4; --step-2:#5598e7; --step-3:#2a78d6; --step-4:#184f95; --grid:#262624; --deal-bg:#2e3d14; --deal-fg:#c7ec7e;
+  --ok:#4ccf73; --bad:#ff7b6e;
+}
+
+/* ---------- Base page ---------- */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 32px clamp(16px, 4vw, 48px) 48px;   /* 16px side gutter on phones */
+  background: var(--bg);
+  color: var(--text-primary);
+  font: 15px/1.5 "Inter", system-ui, sans-serif;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+h1, h2 { margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(24px, 3vw, 32px); font-weight: 700; }
+h2 { font-size: 16px; font-weight: 600; }
+.sub { margin: 4px 0 0; color: var(--text-secondary); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } /* screen-reader only */
+
+/* ---------- Header ---------- */
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.pill {
+  font-size: 13px; font-weight: 500; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap;
+}
+.pill.ok  { color: var(--ok);  border-color: currentColor; }
+.pill.bad { color: var(--bad); border-color: currentColor; }
+
+/* ---------- Error box (only visible when the API is down) ---------- */
+.error {
+  border: 1px solid var(--bad); color: var(--bad); background: var(--surface);
+  border-radius: var(--radius); padding: 14px 18px; margin-bottom: 24px;
+}
+.error code { font-family: "JetBrains Mono", monospace; }
+
+/* ---------- Generic card ---------- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin: 0;
+}
+
+/* ---------- KPI tiles (3 across, stack on small screens) ---------- */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+.kpi {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 2px;
+}
+.kpi-label { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+.kpi-value { font: 600 clamp(26px, 3.4vw, 36px)/1.15 "JetBrains Mono", monospace; letter-spacing: -0.02em; }
+.kpi-note  { color: var(--text-muted); font-size: 12px; }
+
+/* ---------- Charts (2 across, stack on small screens) ---------- */
+.charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+figcaption p { margin: 2px 0 12px; color: var(--text-secondary); font-size: 13px; }
+.chart-box { position: relative; height: 260px; }   /* Chart.js fills this box */
+
+/* ---------- Filters row ---------- */
+.filters { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+.field.grow { flex: 1 1 220px; }
+input, select {
+  font: inherit; color: var(--text-primary); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; min-height: 40px;
+}
+input:focus, select:focus { outline: 2px solid var(--series); outline-offset: 1px; }
+.count { margin-left: auto; color: var(--text-secondary); font-size: 13px; padding-bottom: 10px; }
+
+/* ---------- Games table ---------- */
+.table-wrap { overflow-x: auto; max-height: 560px; overflow-y: auto; border-top: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; }
+th {
+  position: sticky; top: 0; background: var(--surface); z-index: 1;   /* header stays visible while scrolling */
+  text-align: left; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  padding: 10px 8px; border-bottom: 1px solid var(--border);
+}
+td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--bg); }
+.num { text-align: right; font-family: "JetBrains Mono", monospace; white-space: nowrap; }
+.col-img { width: 132px; }
+.cover { width: 120px; height: 45px; object-fit: cover; border-radius: 6px; display: block; }
+.title { font-weight: 500; }
+.muted { color: var(--text-muted); }
+.strike { text-decoration: line-through; color: var(--text-muted); }
+.badge {   /* the green "-75%" tag */
+  display: inline-block; padding: 2px 8px; border-radius: 6px;
+  background: var(--deal-bg); color: var(--deal-fg); font-weight: 600;
+}
+.empty { text-align: center; color: var(--text-muted); padding: 32px; cursor: default; }
+.hint { color: var(--text-muted); font-size: 12px; margin: 10px 0 0; }
+
+/* ---------- History popup ---------- */
+dialog {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text-primary);
+  padding: 20px; width: min(560px, calc(100vw - 32px));
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.icon-btn {
+  background: none; border: 1px solid var(--border); color: var(--text-secondary);
+  border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 14px;
+}
+.history-table tbody tr { cursor: default; }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 760px) {
+  .kpis, .charts { grid-template-columns: 1fr; }
+  .hide-sm { display: none; }
+  .col-img { width: 72px; }
+  .cover { width: 64px; height: 30px; }
+  .count { margin-left: 0; width: 100%; padding: 0; }
+}
