@@ -3,3 +3,6 @@ def clean_price(text):
     
 def clean_pct(text):
     return int(text.replace("-", "").replace("%", ""))
+
+def clean_release(text):
+    return text.strip()
