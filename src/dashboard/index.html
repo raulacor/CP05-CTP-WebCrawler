@@ -7,6 +7,7 @@
     GET /stats            -> indicators + data for both charts
     GET /games            -> the table (with ?title= and ?min_discount= filters)
     GET /games/{appid}    -> the price-history popup when a row is clicked
+    GET /predict/{appid}  -> the ML discount prediction inside that popup
   Open this file directly in the browser after starting uvicorn.
 -->
 <html lang="en">
@@ -134,6 +135,21 @@
       <tbody id="h-rows"></tbody>
     </table>
     <p class="hint" id="h-note"></p>
+
+    <!-- ===== Prediction box - GET /predict/{appid}?date=YYYY-MM-DD (ml.py) ===== -->
+    <div class="predict">
+      <h3>Predict the discount</h3>
+      <div class="predict-row">
+        <label class="field">
+          <span>Date</span>
+          <input id="p-date" type="date">          <!-- default value set by app.js -->
+        </label>
+        <button id="p-btn" class="btn">Predict</button>
+        <!-- Result, e.g. "≈ 68% off", filled by app.js -->
+        <output id="p-result" class="p-result" aria-live="polite"></output>
+      </div>
+      <p class="hint">Machine-learning estimate from the collected history. It gets more reliable as more days are collected.</p>
+    </div>
   </dialog>
 
   <!-- All the fetching/rendering logic -->

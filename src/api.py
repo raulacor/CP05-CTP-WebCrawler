@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import collection
 from fastapi.middleware.cors import CORSMiddleware
-
+from ml import predict_discount
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -82,3 +82,7 @@ async def discount_stats():
         "price: R$50-100": price_per_range["R$50-100"],
         "price: R$100+": price_per_range["R$100+"],
         }
+
+@app.get("/predict/{appid}")
+async def prediction(appid: str, date: str):
+    return {"appid": appid, "date": date, "predicted_discount": round(float(predict_discount(appid, date)), 1)}

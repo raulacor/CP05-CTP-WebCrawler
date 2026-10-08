@@ -162,6 +162,19 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 }
 .history-table tbody tr { cursor: default; }
 
+/* ---------- Prediction box (inside the history popup) ---------- */
+.predict { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.predict h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+.predict-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.btn {
+  font: inherit; font-weight: 600; cursor: pointer;
+  background: var(--series); color: #fff; border: none;
+  border-radius: 10px; padding: 0 18px; min-height: 40px;
+}
+.btn:disabled { opacity: 0.6; cursor: wait; }
+.p-result { font: 600 22px/1.2 "JetBrains Mono", monospace; padding-bottom: 6px; }
+.p-result.err { font: 500 13px/1.4 "Inter", sans-serif; color: var(--bad); }
+
 /* ---------- Small screens ---------- */
 @media (max-width: 760px) {
   .kpis, .charts { grid-template-columns: 1fr; }

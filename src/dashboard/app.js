@@ -4,6 +4,7 @@
      GET /stats           -> KPIs + both charts
      GET /games           -> table, with ?title= and ?min_discount= filters
      GET /games/{appid}   -> history popup
+     GET /predict/{appid} -> ML prediction inside the popup
    ========================================================================== */
 
 // Where uvicorn is running. Change this if you use another port.
@@ -215,8 +216,14 @@ function renderRows(games) {
 
 // ---------- 3) History popup (GET /games/{appid}) ----------
 
+// The game currently open in the popup (used by the Predict button)
+let currentAppid = null;
+
 async function openHistory(appid, title) {
+  currentAppid = appid;
   $("h-title").textContent = title;
+  $("p-result").textContent = "";        // clear the previous game's prediction
+  $("p-result").className = "p-result";
   const tbody = $("h-rows");
   tbody.replaceChildren();
 
@@ -244,6 +251,37 @@ async function openHistory(appid, title) {
 }
 
 $("h-close").addEventListener("click", () => $("history").close());
+
+// ---------- 4) Prediction (GET /predict/{appid}?date=...) ----------
+
+// Default the date input to Halloween of the current year (the example from the
+// project's ML idea); the user can pick any date.
+$("p-date").value = `${new Date().getFullYear()}-10-31`;
+
+async function predict() {
+  const date = $("p-date").value;          // "YYYY-MM-DD" from the date picker
+  if (!currentAppid || !date) return;
+
+  const btn = $("p-btn");
+  const out = $("p-result");
+  btn.disabled = true;                     // avoid double clicks while waiting
+  out.className = "p-result";
+  out.textContent = "…";
+
+  try {
+    const p = await getJSON(`/predict/${encodeURIComponent(currentAppid)}?date=${date}`);
+    out.textContent = `≈ ${Math.round(p.predicted_discount)}% off`;
+  } catch (err) {
+    // Most likely cause: the API is running an older version without /predict
+    out.className = "p-result err";
+    out.textContent = "Prediction failed. Is the API running with /predict?";
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$("p-btn").addEventListener("click", predict);
 
 // ---------- Wire the filters ----------
 

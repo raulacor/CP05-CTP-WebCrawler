@@ -3,3 +3,5 @@ pymongo
 beautifulsoup4
 fastapi
 uvicorn
+pandas
+scikit-learn

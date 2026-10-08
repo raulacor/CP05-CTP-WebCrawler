@@ -21,6 +21,10 @@ Steam (site)  →  crawler.py  →  MongoDB  →  api.py (FastAPI)  →  dashboa
 >   code, pointed out bugs through questions and examples, and on a few specific syntax
 >   points gave the exact line (e.g. reading the `data-ds-appid` attribute, the
 >   `{"_id": 0}` projection, the `$regex`/`$gte` operators and the filter-dict skeleton).
+> - **Machine learning (`ml.py`, `/predict` endpoint) — written by the student**, with
+>   the AI explaining supervised learning (features/target, train/test split, MAE, baseline)
+>   and providing the standard scikit-learn training boilerplate and the pandas syntax for
+>   date splitting and row filtering.
 > - **Design decisions** (the site, the `appid` + `collected_date` dedup key, keeping
 >   sale history, computing stats on the latest collection only, which indicators and
 >   charts to show) were discussed with the AI and made by the student.
@@ -49,11 +53,11 @@ Steam (site)  →  crawler.py  →  MongoDB  →  api.py (FastAPI)  →  dashboa
 
 **Site:** [Steam Store](https://store.steampowered.com/search?hwtype=0&supportedlang=english&specials=1&hidef2p=1&ndl=1) — the search page, filtered to:
 
-| Filter | Parameter | Why |
-|---|---|---|
-| Games on sale only | `specials=1` | the project is about discounts |
-| No free-to-play games | `hidef2p=1` | they cost 0 and would skew the averages |
-| English | `supportedlang=english` | keeps titles consistent |
+| Filter                | Parameter               | Why                                     |
+| --------------------- | ----------------------- | --------------------------------------- |
+| Games on sale only    | `specials=1`            | the project is about discounts          |
+| No free-to-play games | `hidef2p=1`             | they cost 0 and would skew the averages |
+| English               | `supportedlang=english` | keeps titles consistent                 |
 
 This is **public catalog data** (titles, prices, discounts, release dates and
 cover images). **No personal data** is collected.
@@ -71,17 +75,17 @@ As you scroll, Steam loads games in batches of 50 through
 
 ### Extracted fields and basic cleaning
 
-| Field | Source in the HTML | Cleaning |
-|---|---|---|
-| `appid` | the row's `data-ds-appid` attribute | — (Steam's unique game ID) |
-| `title` | `span.title` | — |
-| `release_date` | `div.search_released` | `.strip()` removes spaces and line breaks |
-| `discount_pct` | `div.discount_pct` (e.g. `-75%`) | removes `-` and `%` → int `75` |
-| `original_price` | `div.discount_original_price` (e.g. `R$1.299,90`) | removes `R$` and the thousands `.`, swaps `,` for `.` → float `1299.9` |
-| `discounted_price` | `div.discount_final_price` | same cleaning → float |
-| `image` | `src` attribute of the cover `img` | — |
-| `collected_date` | date of the run | `date.today().isoformat()` → `"2026-10-08"` |
-| `source` | constant | identifies where the data came from |
+| Field              | Source in the HTML                                | Cleaning                                                               |
+| ------------------ | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| `appid`            | the row's `data-ds-appid` attribute               | — (Steam's unique game ID)                                             |
+| `title`            | `span.title`                                      | —                                                                      |
+| `release_date`     | `div.search_released`                             | `.strip()` removes spaces and line breaks                              |
+| `discount_pct`     | `div.discount_pct` (e.g. `-75%`)                  | removes `-` and `%` → int `75`                                         |
+| `original_price`   | `div.discount_original_price` (e.g. `R$1.299,90`) | removes `R$` and the thousands `.`, swaps `,` for `.` → float `1299.9` |
+| `discounted_price` | `div.discount_final_price`                        | same cleaning → float                                                  |
+| `image`            | `src` attribute of the cover `img`                | —                                                                      |
+| `collected_date`   | date of the run                                   | `date.today().isoformat()` → `"2026-10-08"`                            |
+| `source`           | constant                                          | identifies where the data came from                                    |
 
 > Prices are in **Brazilian reais (BRL)** because Steam uses the visitor's region.
 
@@ -100,6 +104,7 @@ CP05-CTP-WebCrawler/
     ├── auxiliary.py     # COLLECTION — cleaning helpers (clean_price, clean_pct, clean_release)
     ├── database.py      # PERSISTENCE — MongoDB connection and save_games (upsert)
     ├── api.py           # API — FastAPI endpoints
+    ├── ml.py            # MACHINE LEARNING — trains the discount model, predict_discount()
     └── dashboard/       # INTERFACE — talks only to the API
         ├── index.html
         ├── style.css
@@ -163,7 +168,16 @@ any number of times: on the **same day** it updates the existing records (no
 duplicates); on **different days** it adds new records, building the price
 history.
 
-### 4.3 Start the API
+### 4.3 (optional) Evaluate the model
+
+```bash
+cd src
+python ml.py
+```
+
+Trains the model and prints its error next to a baseline, plus a sample prediction.
+
+### 4.4 Start the API
 
 ```bash
 cd src
@@ -173,7 +187,7 @@ uvicorn api:app --reload
 The API runs at `http://localhost:8000`, with interactive docs (Swagger) at
 `http://localhost:8000/docs`.
 
-### 4.4 Open the dashboard
+### 4.5 Open the dashboard
 
 With the API running, open `src/dashboard/index.html` in the browser.
 
@@ -195,7 +209,7 @@ With the API running, open `src/dashboard/index.html` in the browser.
   "release_date": "9 Dec, 2020",
   "discount_pct": 65,
   "discounted_price": 69.96,
-  "original_price": 199.90,
+  "original_price": 199.9,
   "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/capsule_sm_120.jpg",
   "collected_date": "2026-10-08",
   "source": "https://store.steampowered.com/search?"
@@ -204,23 +218,23 @@ With the API running, open `src/dashboard/index.html` in the browser.
 
 ### Fields
 
-| Field | Type | Description |
-|---|---|---|
-| `_id` | ObjectId | generated by MongoDB (left out of API responses) |
-| `appid` | string | Steam game ID |
-| `title` | string | game name |
-| `release_date` | string | release date as Steam displays it |
-| `discount_pct` | int | discount in % (0–100) |
-| `discounted_price` | float | final price after discount, in R$ |
-| `original_price` | float | full price, in R$ |
-| `image` | string | cover image URL |
-| `collected_date` | string `YYYY-MM-DD` | **when** the data was collected |
-| `source` | string | **where** the data was collected from |
+| Field              | Type                | Description                                      |
+| ------------------ | ------------------- | ------------------------------------------------ |
+| `_id`              | ObjectId            | generated by MongoDB (left out of API responses) |
+| `appid`            | string              | Steam game ID                                    |
+| `title`            | string              | game name                                        |
+| `release_date`     | string              | release date as Steam displays it                |
+| `discount_pct`     | int                 | discount in % (0–100)                            |
+| `discounted_price` | float               | final price after discount, in R$                |
+| `original_price`   | float               | full price, in R$                                |
+| `image`            | string              | cover image URL                                  |
+| `collected_date`   | string `YYYY-MM-DD` | **when** the data was collected                  |
+| `source`           | string              | **where** the data was collected from            |
 
 ### Duplicates and history
 
 A record's key is the pair **`appid` + `collected_date`**. `save_games` uses an
-*upsert*:
+_upsert_:
 
 ```python
 collection.update_one(
@@ -244,10 +258,10 @@ Base URL: `http://localhost:8000` · Swagger: `/docs` · All responses are JSON.
 
 ### `GET /games` — list and filter records
 
-| Query parameter | Type | Required | Description |
-|---|---|---|---|
-| `title` | string | no | case-insensitive search in the title (`$regex`) |
-| `min_discount` | int | no | only games with a discount ≥ this value (`$gte`) |
+| Query parameter | Type   | Required | Description                                      |
+| --------------- | ------ | -------- | ------------------------------------------------ |
+| `title`         | string | no       | case-insensitive search in the title (`$regex`)  |
+| `min_discount`  | int    | no       | only games with a discount ≥ this value (`$gte`) |
 
 Filters can be combined. Returns records from every collected date.
 
@@ -266,7 +280,7 @@ GET /games?title=grand&min_discount=50
     "release_date": "13 Apr, 2015",
     "discount_pct": 60,
     "discounted_price": 39.96,
-    "original_price": 99.90,
+    "original_price": 99.9,
     "image": "https://...",
     "collected_date": "2026-10-08",
     "source": "https://store.steampowered.com/search?"
@@ -284,8 +298,22 @@ GET /games/271590
 
 ```json
 [
-  { "appid": "271590", "title": "Grand Theft Auto V", "discount_pct": 60, "discounted_price": 39.96, "collected_date": "2026-10-08", "...": "..." },
-  { "appid": "271590", "title": "Grand Theft Auto V", "discount_pct": 40, "discounted_price": 59.94, "collected_date": "2026-10-07", "...": "..." }
+  {
+    "appid": "271590",
+    "title": "Grand Theft Auto V",
+    "discount_pct": 60,
+    "discounted_price": 39.96,
+    "collected_date": "2026-10-08",
+    "...": "..."
+  },
+  {
+    "appid": "271590",
+    "title": "Grand Theft Auto V",
+    "discount_pct": 40,
+    "discounted_price": 59.94,
+    "collected_date": "2026-10-07",
+    "...": "..."
+  }
 ]
 ```
 
@@ -313,14 +341,31 @@ day it was collected.
 }
 ```
 
-| Field | Meaning |
-|---|---|
-| `date` | date of the latest collection |
-| `total_games` | number of games in that collection |
-| `total_savings` | sum of `original_price − discounted_price` (R$) |
-| `average_discount` | mean of `discount_pct` (%) |
-| `range ...` | number of games per discount range |
-| `price: ...` | number of games per final-price range |
+| Field              | Meaning                                         |
+| ------------------ | ----------------------------------------------- |
+| `date`             | date of the latest collection                   |
+| `total_games`      | number of games in that collection              |
+| `total_savings`    | sum of `original_price − discounted_price` (R$) |
+| `average_discount` | mean of `discount_pct` (%)                      |
+| `range ...`        | number of games per discount range              |
+| `price: ...`       | number of games per final-price range           |
+
+### `GET /predict/{appid}` — predicted discount (machine learning)
+
+| Parameter | Where | Type                | Description         |
+| --------- | ----- | ------------------- | ------------------- |
+| `appid`   | path  | string              | Steam game ID       |
+| `date`    | query | string `YYYY-MM-DD` | date to predict for |
+
+```
+GET /predict/271590?date=2026-10-31
+```
+
+```json
+{ "appid": "271590", "date": "2026-10-31", "predicted_discount": 68.0 }
+```
+
+See [Machine Learning](#8-machine-learning) for how the prediction is made and its current limits.
 
 ---
 
@@ -329,16 +374,16 @@ day it was collected.
 A web page in HTML, CSS and JavaScript (charts with Chart.js) that consumes
 **only the API**:
 
-| Element | Endpoint |
-|---|---|
-| Total records — games on sale | `GET /stats` |
-| Indicator — average discount | `GET /stats` |
-| Indicator — total savings | `GET /stats` |
-| Pie chart — games per discount range | `GET /stats` |
-| Pie chart — games per final-price range | `GET /stats` |
-| Title search + minimum-discount filter | `GET /games?title=&min_discount=` |
-| Games table (cover, title, release, discount, prices) | `GET /games` |
-| Price history when clicking a game | `GET /games/{appid}` |
+| Element                                               | Endpoint                          |
+| ----------------------------------------------------- | --------------------------------- |
+| Total records — games on sale                         | `GET /stats`                      |
+| Indicator — average discount                          | `GET /stats`                      |
+| Indicator — total savings                             | `GET /stats`                      |
+| Pie chart — games per discount range                  | `GET /stats`                      |
+| Pie chart — games per final-price range               | `GET /stats`                      |
+| Title search + minimum-discount filter                | `GET /games?title=&min_discount=` |
+| Games table (cover, title, release, discount, prices) | `GET /games`                      |
+| Price history when clicking a game                    | `GET /games/{appid}`              |
 
 Supports light/dark mode (follows the system) and phone screens.
 
@@ -346,15 +391,45 @@ Supports light/dark mode (follows the system) and phone screens.
 
 ## 8. Machine Learning
 
-> Section to be completed.
+**Goal:** answer _"when is the best time to buy game X?"_ by predicting how big a
+game's discount will be on a given date.
+
+Design choices:
+
+- **The date is split into `month` and `day`** instead of used as a full date, because
+  `2027-10-31` never appears in training, while "month 10, day 31" repeats every year.
+  That's what lets the model learn seasonal sales (e.g. Halloween).
+- **`discount_pct` instead of price** as the target, because base prices change over
+  time, while the discount is comparable across years.
+- **Bundles are excluded** (rows whose `appid` lists several games, like
+  `"1880360,1446780"`). A bundle's discount isn't the discount of one game, and keeping
+  it would give the model conflicting answers for the same game and day. Bundles stay in
+  MongoDB, the API and the dashboard.
+
+### Model and evaluation
+
+- **Model:** `RandomForestRegressor` (scikit-learn), an average of many decision trees
+  that predicts a number.
+- **Evaluation:** 80% of rows train the model, and 20% are held out and used only for
+  testing. The metric is **MAE** (mean absolute error): the average distance between the
+  predicted and the real discount, in percentage points.
+- **Baseline:** always predicting the average discount.
+
+|                               | MAE         |
+| ----------------------------- | ----------- |
+| Baseline (always the average) | ≈ 19 points |
+| Random forest                 | ≈ 9 points  |
+
+_(Measured with 3 daily collections, Oct 6–8, 2026.)_
 
 ---
 
 ## 9. Technologies
 
-| Layer | Technology |
-|---|---|
-| Collection | Python, [requests](https://requests.readthedocs.io/), [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) |
-| Persistence | [MongoDB](https://www.mongodb.com/), [pymongo](https://pymongo.readthedocs.io/) |
-| API | [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://www.uvicorn.org/) |
-| Interface | HTML, CSS, JavaScript, [Chart.js](https://www.chartjs.org/) |
+| Layer            | Technology                                                                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Collection       | Python, [requests](https://requests.readthedocs.io/), [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) |
+| Persistence      | [MongoDB](https://www.mongodb.com/), [pymongo](https://pymongo.readthedocs.io/)                                               |
+| API              | [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://www.uvicorn.org/)                                                 |
+| Interface        | HTML, CSS, JavaScript, [Chart.js](https://www.chartjs.org/)                                                                   |
+| Machine learning | [pandas](https://pandas.pydata.org/), [scikit-learn](https://scikit-learn.org/)                                               |
